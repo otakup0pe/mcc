@@ -4,9 +4,7 @@
 -export([add_handler/2,delete_handler/1,notify/1]).
 -export([init/1, terminate/2, handle_event/2, handle_call/2, handle_info/2, code_change/3]).
 
--include("mcc.hrl").
-
--record(state, {mod, state}).
+-include("mcc_internal.hrl").
 
 behaviour_info(callbacks) ->
     [
@@ -30,10 +28,10 @@ notify(#mcc{} = MCC) ->
 init([Mod|Args]) ->
     case Mod:init(Args) of
 	{ok, State} ->
-	    {ok, #state{mod = Mod, state = State}}
+	    {ok, #mcc_event_state{mod = Mod, state = State}}
     end.
 
-terminate(_R, #state{mod = Mod, state = CBState}) ->
+terminate(_R, #mcc_event_state{mod = Mod, state = CBState}) ->
     Mod:terminate(CBState),
     ok.
 
@@ -49,8 +47,8 @@ handle_event({mcc, M}, State) ->
 code_change(_, State, _) ->
     {ok, State}.
 
-handle_mcc_event(#mcc{} = MCC, #state{mod = M, state = CBState} = State) ->
+handle_mcc_event(#mcc{} = MCC, #mcc_event_state{mod = M, state = CBState} = State) ->
     case M:update(MCC, CBState) of
 	{ok, NewCBState} ->
-	    State#state{state = NewCBState}
+	    State#mcc_event_state{state = NewCBState}
     end.

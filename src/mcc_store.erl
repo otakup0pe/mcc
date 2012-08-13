@@ -2,7 +2,9 @@
 
 -export([render/1]).
 -export([redis_get/1, redis_set/2, redis_parse/1, overlay_read/1]).
-
+-ifdef(TEST).
+-compile(export_all).
+-endif.  
 -define(REDIS_VSN, 1).
 
 overlay_read(undefined) ->
@@ -41,12 +43,11 @@ redis_parse(Bin) when is_binary(Bin) ->
     end.
 
 render(Terms) ->
-    render(mcc_terms, Terms).
+    compile(render(mcc_terms, Terms)).
 render(Mod, Terms) ->
     render(Terms, lists:reverse(header(Mod, Terms)), 5).
 render([], Forms, Line) ->
-    F = lists:reverse([{eof, Line + 1} | Forms]),
-    compile(F);
+    lists:reverse([{eof, Line + 1} | Forms]);
 render([{Name, Terms}|Tail], Forms, Line) ->
     render(Tail, [{function, Line, Name, 1, render_namespace(Name, Terms, [], Line + 1)} | Forms], Line + 1).
 
