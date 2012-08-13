@@ -16,6 +16,7 @@ cfgdel_basic_test() ->
     ?assert([{fap, [{bam, ban}]}] == mcc_util:cfgdel(foo, bar, [{foo, [{bar, baz}]}, {fap, [{bam, ban}]}])).
 
 autoval_test() ->
+    ?assert(1.5 == mcc_util:autoval("1.5")),
     ?assert(1 == mcc_util:autoval("1")),
     ?assert("hgluaghlagh" == mcc_util:autoval("hgluaghlagh")),
     ?assert(mcc == mcc_util:autoval("mcc")).

@@ -47,11 +47,16 @@ autoval(Value) when is_list(Value) ->
 	I when is_integer(I) ->
 	    I;
 	{'EXIT', {badarg, _}} ->
-	    case catch list_to_existing_atom(Value) of
-		A when is_atom(A) ->
-		    A;
+	    case catch list_to_float(Value) of
+		F when is_float(F) ->
+		    F;
 		{'EXIT', {badarg, _}} ->
-		    Value
+		    case catch list_to_existing_atom(Value) of
+			A when is_atom(A) ->
+			    A;
+			{'EXIT', {badarg, _}} ->
+			    Value
+		    end
 	    end
     end.
 
