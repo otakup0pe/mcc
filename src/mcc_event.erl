@@ -1,7 +1,7 @@
 -module(mcc_event).
 -behaviour(gen_event).
 -export([start_link/0,behaviour_info/1]).
--export([add_handler/2,delete_handler/1,notify/1]).
+-export([add_sup_handler/2,delete_handler/1,notify/1]).
 -export([init/1, terminate/2, handle_event/2, handle_call/2, handle_info/2, code_change/3]).
 
 -include("mcc_internal.hrl").
@@ -16,7 +16,7 @@ behaviour_info(callbacks) ->
 start_link() ->
     gen_event:start_link({local, ?MODULE}).
 
-add_handler(Mod, Args) ->
+add_sup_handler(Mod, Args) ->
     gen_event:add_sup_handler(?MODULE, {?MODULE, Mod}, [Mod | Args]).
 
 delete_handler(Mod) ->

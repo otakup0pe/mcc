@@ -43,10 +43,10 @@ rehash_appenv([], Config) ->
     Config;
 rehash_appenv([N|T], Config) ->
     case application:get_all_env(N) of
-	{ok, PL} ->
-	    rehash_appenv(T, [{N, PL}|Config]);
-	undefined ->
-	    rehash_appenv(T, Config)
+	[] ->
+	    rehash_appenv(T, Config);
+	PL when is_list(PL) ->
+	    rehash_appenv(T, [{N, PL}|Config])
     end.
 
 rehash_osenv(State) ->
@@ -65,11 +65,11 @@ rehash_osenv_fun(Namespace) ->
     N = string:to_upper(atom_to_list(Namespace)),
     fun
 	(Env, Config) ->
-	    case string:split(Env, "=") of
+	    case string:tokens(Env, "=") of
 		[Entry, Value] ->
-		    case string:split(Entry, "_") of
+		    case string:tokens(Entry, "_") of
 			[N, Key] ->
-			    mcc_util:cfgset(Namespace, list_to_atom(Key), mcc_util:autovalue(Value), Config);
+			    mcc_util:cfgset(Namespace, list_to_atom(Key), mcc_util:autoval(Value), Config);
 			_ ->
 			    Config
 		    end;

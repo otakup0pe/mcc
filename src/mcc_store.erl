@@ -62,12 +62,30 @@ render_value(Line, Value) when is_integer(Value) ->
     {integer, Line, Value};
 render_value(Line, Value) when is_float(Value) ->
     {float, Line, Value};
+render_value(Line, []) ->
+    {nil, Line};
 render_value(Line, Value) when is_list(Value) ->
-    {string, Line, Value};
+    case io_lib:printable_unicode_list(Value) of
+	true ->
+	    {string, Line, Value};
+	false ->
+	    render_list(Line, lists:reverse(Value))
+    end;
 render_value(Line, Value) when is_tuple(Value) ->
     {tuple, Line, lists:map(fun(A) ->
 				    render_value(Line, A)
 			    end, tuple_to_list(Value))}.
+
+render_list(Line, [H|T]) ->
+    render_list(Line, T, {cons, Line, render_value(Line, H), {nil, Line}}).
+render_list(_Line, [], Result) ->
+    Result;
+render_list(Line, [H|T], Result) ->
+    render_list(Line, T, {cons, Line, render_value(Line, H), Result}).
+
+%% extract from mod
+%% {_,_,Bin}=compile:file(Mod,[debug_info,export_all,binary]), {ok,{_,[{abstract_code,{_,R}}]}} = beam_lib:chunks(Bin, [abstract_code]), 
+%%                  io:format("~p~n",[R]).
 
 header(Mod, Terms) ->
     Namespaces = lists:map(fun({Name, _}) -> {Name, 1} end, Terms),
@@ -77,6 +95,7 @@ header(Mod, Terms) ->
     ].
 
 compile(Forms) ->
+    io:format("FORMS ~p~n", [Forms]),
     case compile:forms(Forms) of
 	{ok, Mod, Code} ->
 	    code:purge(Mod),
