@@ -46,7 +46,12 @@ rehash_appenv([N|T], Config) ->
 	[] ->
 	    rehash_appenv(T, Config);
 	PL when is_list(PL) ->
-	    rehash_appenv(T, [{N, PL}|Config])
+	    case lists:keydelete(included_applications, 1, PL) of
+		[] ->
+		    rehash_appenv(T, Config);
+		PL0 when is_list(PL0) ->
+		    rehash_appenv(T, [{N, PL0}|Config])
+	    end
     end.
 
 rehash_osenv(State) ->
@@ -68,8 +73,8 @@ rehash_osenv_fun(Namespace) ->
 	    case string:tokens(Env, "=") of
 		[Entry, Value] ->
 		    case string:tokens(Entry, "_") of
-			[N, Key] ->
-			    mcc_util:cfgset(Namespace, list_to_atom(Key), mcc_util:autoval(Value), Config);
+			[N| Key] ->
+			    mcc_util:cfgset(Namespace, list_to_atom(string:to_lower(string:join(Key, "_"))), mcc_util:autoval(Value), Config);
 			_ ->
 			    Config
 		    end;
