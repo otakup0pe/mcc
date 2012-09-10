@@ -20,7 +20,7 @@ add_sup_handler(Mod, Args) ->
     gen_event:add_sup_handler(?MODULE, {?MODULE, Mod}, [Mod | Args]).
 
 delete_handler(Mod) ->
-    gen_event:delete_handler(?MODULE, {?MODULE, Mod}).
+    gen_event:delete_handler(?MODULE, {?MODULE, Mod}, []).
 
 notify(#mcc{} = MCC) ->
     ok = gen_event:notify(?MODULE, MCC).
