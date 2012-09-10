@@ -4,3 +4,4 @@ ebin
 \#*\#
 doc
 .eunit
+*erl_crash.dump
