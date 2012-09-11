@@ -1,4 +1,5 @@
 -module(mcc).
+-author('jonafree@gmail.com').
 -behaviour(gen_server).
 
 -export([start_link/0, start/0]).
@@ -26,7 +27,7 @@ start_link() ->
 
 init([]) ->
     S0 = init_redis(#mcc_state{
-      overlay = ?MCC_OVERLAY_FILE,
+      overlay = ?MCC_OVERLAY_DIR ++ ?MCC_OVERLAY_FILE,
       overlay_every = ?MCC_OVERLAY_EVERY
      }),
     {ok, timer(rehash(rehash_appenv(rehash_osenv(S0))))}.

@@ -1,5 +1,7 @@
 -module(mcc_util).
+-author('jonafree@gmail.com').
 
+-include("mcc_internal.hrl").
 -export([app_env/3, os_env/3, verify/1, cfgget/4, cfgset/4, cfgdel/3, autoval/1]).
 
 cfgget(Name, Key, Terms, Default) when is_atom(Name), is_atom(Key), is_list(Terms) ->

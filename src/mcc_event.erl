@@ -1,4 +1,5 @@
 -module(mcc_event).
+-author('jonafree@gmail.com').
 -behaviour(gen_event).
 -export([start_link/0,behaviour_info/1]).
 -export([add_sup_handler/2,delete_handler/1,notify/1]).

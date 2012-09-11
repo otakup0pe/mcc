@@ -1,4 +1,7 @@
 -module(mcc_store).
+-author('jonafree@gmail.com').
+
+-include("mcc_internal.hrl").
 
 -export([render/1]).
 -export([redis_get/1, redis_set/2, redis_parse/1, overlay_read/1]).

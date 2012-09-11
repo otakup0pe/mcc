@@ -1,4 +1,5 @@
 -module(mcc_shell).
+-author('jonafree@gmail.com').
 -behaviour(shellbeam).
 
 -export([commands/0]).
@@ -17,8 +18,8 @@ cfglist() ->
 								      {I + 1, A ++ "(" ++ integer_to_list(I) ++ ") " ++ atom_to_list(Name) ++ "~n"} end, {1, ""}, mcc:list()), S end}.
 
 cfglist(Name) ->
-    F = fun({K, V}, {I, A}) ->
-		
+    F = fun(K, {I, A}) ->
+		V = mcc:get(Name, K, undefined),
                 {I + 1, A ++ "(" ++ integer_to_list(I) ++ ") " ++ atom_to_list(K) ++ " : " ++ io_lib:format("~p", [V]) ++ "~n"}
         end,
         {ok, "Config items under " ++ atom_to_list(Name) ++ "~n" ++ begin {_, S} = lists:foldl(F, {1, ""}, mcc:list(Name)), S end}.

@@ -1,6 +1,8 @@
 -module(mcc_sup).
+-author('jonafree@gmail.com').
 -behviour(supervisor).
 
+-include("mcc_internal.hrl").
 -export([start_link/0, init/1]).
 
 start_link() ->
