@@ -2,7 +2,7 @@
 -author('jonafree@gmail.com').
 -behaviour(gen_server).
 
--export([start_link/0, start/0]).
+-export([start_link/0, start/0, rehash/0]).
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, terminate/2, code_change/3]).
 -export([set/3, get/3, list/0, list/1]).
 -ifdef(TEST).
@@ -15,6 +15,9 @@ start() ->
     lists:foreach(fun(A) ->
 			  application:start(A)
 		  end, [sasl, eredis, mcc]).
+
+rehash() ->
+    gen_server:cast(?MODULE, rehash).
 
 list() ->
     gen_server:call(?MODULE, list).
