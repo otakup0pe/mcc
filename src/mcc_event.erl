@@ -42,7 +42,7 @@ handle_call(_, State) ->
 handle_info(_, State) ->
     {ok, State}.
 
-handle_event({mcc, M}, State) ->
+handle_event(#mcc{} = M, State) ->
     {ok, handle_mcc_event(M, State)}.
 
 code_change(_, State, _) ->

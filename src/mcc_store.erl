@@ -21,9 +21,16 @@ overlay_read(File) ->
     end.
 
 redis_set(PID, Config) when is_pid(PID), is_list(Config) ->
-    case eredis:q(PID, ["SET", "mcc", term_to_binary({mcc, ?REDIS_VSN, Config})]) of
+    Blob = term_to_binary({mcc, ?REDIS_VSN, Config}),
+    case eredis:q(PID, ["SET", "mcc", Blob]) of
 	{ok, <<"OK">>} ->
-	    ok
+	    case eredis:q(PID, ["PUBLISH", "mcc", Blob]) of
+		{ok, B} ->
+		    case list_to_integer(binary_to_list(B)) of
+			I when is_integer(I) ->
+			    ok
+		    end
+	    end
     end.
 
 redis_get(undefined) ->

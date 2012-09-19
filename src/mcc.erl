@@ -2,7 +2,7 @@
 -author('jonafree@gmail.com').
 -behaviour(gen_server).
 
--export([start_link/0, start/0, rehash/0]).
+-export([start_link/0, start/0, rehash/0, flush/0]).
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, terminate/2, code_change/3]).
 -export([set/3, get/3, list/0, list/1]).
 -ifdef(TEST).
@@ -24,6 +24,9 @@ list() ->
 
 list(N) ->
     gen_server:call(?MODULE, {list, N}).
+
+flush() ->
+    gen_server:cast(?MODULE, flush).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -95,7 +98,8 @@ init_redis(#mcc_state{redis = undefined} = State) ->
 	    {Host, Port} = {?MCC_REDIS_SERVER, ?MCC_REDIS_PORT},
 	    {ok, Redis} = eredis:start_link(Host, Port),
 	    {ok, RedisSub} = eredis_sub:start_link(Host, Port, ""),
-	    ok = eredis_sub:subscribe(self(), [<<"mcc">>]),
+	    ok = eredis_sub:controlling_process(RedisSub),
+	    ok = eredis_sub:subscribe(RedisSub, [<<"mcc">>]),
 	    State#mcc_state{redis = Redis, redis_sub = RedisSub}
     end.
 
@@ -112,6 +116,12 @@ timer(#mcc_state{tref = TRef} = State) ->
 	    timer(State#mcc_state{tref = undefined})
     end.
 
+handle_info({subscribed, <<"mcc">>, PID}, #mcc_state{redis_sub = PID} = State) ->
+    eredis_sub:ack_message(PID),
+    {noreply, State};
+handle_info({message, <<"mcc">>, Config, PID}, #mcc_state{redis_sub = PID} = State) ->
+    eredis_sub:ack_message(PID),
+    {noreply, rehash(mcc_store:redis_parse(Config), State)};
 handle_info(rehash, State) ->
     {noreply, rehash(State)}.
 
@@ -124,10 +134,9 @@ handle_call({list, Name}, _From, State) ->
 handle_call(info, _From, State) ->
     {reply, p_info(State), State}.
 
-handle_cast({subscribe, PID, [<<"mcc">>]}, #mcc_state{} = State) when PID == self() ->
+handle_cast(flush, #mcc_state{redis = Redis} = State) ->
+    mcc_store:redis_set(Redis, []),
     {noreply, State};
-handle_cast({pmessage, <<"mcc">>, <<"mcc">>, Config, PID}, #mcc_state{} = State) when PID == self() ->
-    {noreply, rehash(mcc_store:redis_parse(Config), State)};
 handle_cast(rehash, State) ->
     {noreply, p_tick(State)}.
 
@@ -220,8 +229,6 @@ set(Name, Key, Value) when is_atom(Name), is_atom(Key) ->
 
 p_set(Name, Key, Value, #mcc_state{config = Config, redis = Redis} = State) ->
     case mcc_util:cfgget(Name, Key, Config, undefined) of
-	undefined ->
-	    State;
 	Value ->
 	    State;
 	_Other ->
