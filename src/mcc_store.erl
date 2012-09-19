@@ -53,7 +53,7 @@ redis_parse(Bin) when is_binary(Bin) ->
     end.
 
 render(Terms) ->
-    io:format("TERMS ~p~n", [Terms]),
+%%    io:format("TERMS ~p~n", [Terms]),
     compile(render(mcc_terms, Terms)).
 render(Mod, Terms) ->
     render(Terms, lists:reverse(header(Mod, Terms)), 5).
