@@ -17,6 +17,9 @@ overlay_read(File) ->
 	{ok, Overlay} ->
 	    Overlay;
 	{error, enoent} ->
+	    [];
+	{error, {Line, erl_parse, M}} ->
+	    ?error("unable to read overlay line ~p : ~s", [Line, lists:flatten(M)]),
 	    []
     end.
 
