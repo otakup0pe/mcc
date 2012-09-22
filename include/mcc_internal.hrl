@@ -12,6 +12,7 @@
 -define(MCC_REDIS_PORT, mcc_util:app_env(mcc, redis_port, 6379)).
 
 -define(info(F, A), error_logger:info_msg("[mcc] " ++ F, A)).
+-define(error(F, A), error_logger:error_msg("[mcc] " ++ F, A)).
 
 -ifdef(build_vsn).
 -vsn(?build_vsn).
