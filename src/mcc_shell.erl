@@ -22,7 +22,12 @@ cfglist(Name) ->
 		V = mcc:get(Name, K, undefined),
                 {I + 1, A ++ "(" ++ integer_to_list(I) ++ ") " ++ atom_to_list(K) ++ " : " ++ io_lib:format("~p", [V]) ++ "~n"}
         end,
-        {ok, "Config items under " ++ atom_to_list(Name) ++ "~n" ++ begin {_, S} = lists:foldl(F, {1, ""}, mcc:list(Name)), S end}.
+    case lists:member(Name, mcc:list()) of
+	true ->
+	    {ok, "Config items under " ++ atom_to_list(Name) ++ "~n" ++ begin {_, S} = lists:foldl(F, {1, ""}, mcc:list(Name)), S end};
+	false ->
+	    {error, "Unknown namespace", []}
+    end.
 
 cfgget(Name, Key) ->
     {ok, "Config ~p:~p : ~p", [Name, Key, mcc:get(Name, Key, undefined)]}.
