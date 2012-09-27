@@ -3,15 +3,20 @@
 -behaviour(shellbeam).
 
 -export([commands/0]).
--export([cfglist/0, cfglist/1, cfgget/2, cfgset/3]).
+-export([cfglist/0, cfglist/1, cfgget/2, cfgset/3, cfgflush/0]).
 
 commands() ->
     [
      {["list"], "List configuration namespaces", fun cfglist/0},
      {["list", {"namespace", atom}], "List configuration items in a namespace", fun cfglist/1},
      {["get", {"namespace", atom}, {"key", atom}], "Retrieve a configuration item", fun cfgget/2},
-     {["set", {"namespace", atom}, {"key", atom}, {"value", string}], "Set a configuration item", fun cfgset/3}
+     {["set", {"namespace", atom}, {"key", atom}, {"value", string}], "Set a configuration item", fun cfgset/3},
+     {["flush"], "Flush Hot (redis) Config", fun cfgflush/0}
     ].
+
+cfgflush() ->
+    mcc:flush(),
+    {ok, "Flushed.", []}.
 
 cfglist() ->
     {ok, "Config namespaces~n" ++ begin {_, S} = lists:foldl(fun(Name, {I, A}) ->
