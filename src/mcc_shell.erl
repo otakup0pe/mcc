@@ -10,7 +10,7 @@ commands() ->
      {["list"], "List configuration namespaces", fun cfglist/0},
      {["list", {"namespace", atom}], "List configuration items in a namespace", fun cfglist/1},
      {["get", {"namespace", atom}, {"key", atom}], "Retrieve a configuration item", fun cfgget/2},
-     {["set", {"namespace", atom}, {"key", atom}, {"value", string}], "Set a configuration item", fun cfgset/3},
+     {["set", {"namespace", atom}, {"key", atom}, {"value", auto}], "Set a configuration item", fun cfgset/3},
      {["flush"], "Flush Hot (redis) Config", fun cfgflush/0}
     ].
 
