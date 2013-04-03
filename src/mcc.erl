@@ -4,7 +4,7 @@
 
 -export([start_link/0, start/0, rehash/0, flush/0]).
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, terminate/2, code_change/3]).
--export([set/3, get/3, list/0, list/1]).
+-export([set/3, get/3, list/0, list/1, all/0]).
 -ifdef(TEST).
 -compile(export_all).
 -endif.  
@@ -27,6 +27,15 @@ list(N) ->
 
 flush() ->
     gen_server:cast(?MODULE, flush).
+
+all() ->
+    all(list(), []).
+all([], R) ->
+    R;
+all([N|T], R) ->
+    all(T, [{N, lists:map(fun(K) ->
+                             {K, get(N, K, undefined)}
+                     end, list(N))}|R]).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).

@@ -5,3 +5,4 @@ ebin
 doc
 .eunit
 *erl_crash.dump
+mcc_doc.tgz
