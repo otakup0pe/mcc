@@ -172,7 +172,8 @@ p_tick(State) ->
 rehash(#mcc_state{redis = R} = State) ->
     rehash(mcc_store:redis_get(R), #mcc_state{redis = R} = State).
 rehash(RC0, #mcc_state{redis = Redis, config = C, os_env = OC, app_env = AC, overlay = F} = State) ->
-    C0 = lists:foldl(fun merge_fun/2, AC, mcc_store:overlay_read(F)), % merge overlay
+    C9 = lists:foldl(fun merge_fun/2, C, AC),
+    C0 = lists:foldl(fun merge_fun/2, C9, mcc_store:overlay_read(F)), % merge overlay
     RC = lists:foldl(fun redis_clean_fun/2, RC0, C0),
     if
         RC /= RC0 ->
@@ -245,11 +246,11 @@ p_set(Name, Key, Value, #mcc_state{config = Config, redis = Redis} = State) ->
             State;
         _Other ->
             if Redis /= undefined ->
-                    ok = mcc_store:redis_set(Redis, mcc_util:cfgset(Name, Key, Value, mcc_store:redis_get(Redis)));
+                    ok = mcc_store:redis_set(Redis,mcc_util:cfgset(Name, Key, Value, mcc_store:redis_get(Redis))),
+                    rehash(State);
                true ->
-                    ok
-            end,
-            rehash(State)
+                    rehash(State#mcc_state{config = mcc_util:cfgset(Name, Key, Value, Config)})
+            end
     end.
 
 p_list(#mcc_state{config = C}) ->
