@@ -2,7 +2,7 @@
 	      [
 	      {description, "Mea Culpa; Configuration"},
 	      {vsn, "0.1"},
-	      {registered, ["mcc"]},
+	      {registered, [mcc]},
 	      {applications, [sasl,stdlib,kernel,eredis]},
 	      {mod, {mcc_app, []}}
 ]}.
