@@ -4,7 +4,7 @@
 
 -export([start_link/0, start/0, rehash/0, flush/0]).
 -export([init/1, handle_cast/2, handle_call/3, handle_info/2, terminate/2, code_change/3]).
--export([set/3, get/3, list/0, list/1, all/0]).
+-export([set/3, get/3, list/0, list/1, all/0, info/0]).
 -ifdef(TEST).
 -compile(export_all).
 -endif.
@@ -14,7 +14,11 @@
 start() ->
     lists:foreach(fun(A) ->
                           application:start(A)
-                  end, [sasl, eredis, mcc]).
+                  end, [sasl, yamerl, mcc]).
+
+info() ->
+    {ok, R} = gen_server:call(?MODULE, info),
+    R.
 
 rehash() ->
     gen_server:cast(?MODULE, rehash).
@@ -41,16 +45,17 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    S0 = init_redis(#mcc_state{
-                       overlay = p_overlay_file(),
-                       overlay_every = ?MCC_OVERLAY_EVERY
-                      }),
-    {ok, timer(rehash(rehash_appenv(rehash_osenv(S0))))}.
+    S0 = #mcc_state{
+            overlay = p_overlay_file("MCC_OVERLAY_FILE", ?MCC_OVERLAY_FILE),
+            yaml_overlay = p_overlay_file("MCC_YAML", ?MCC_YAML_FILE),
+            overlay_every = ?MCC_OVERLAY_EVERY
+           },
+    {ok, timer(rehash(rehash_osenv(S0)))}.
 
-p_overlay_file() ->
-    case os:getenv("MCC_OVERLAY_FILE") of
+p_overlay_file(Env, File) ->
+    case os:getenv(Env) of
         false ->
-            ?MCC_OVERLAY_FILE;
+            File;
         F when is_list(F) ->
             F
     end.
@@ -107,19 +112,6 @@ rehash_osenv_fun(Namespace) ->
                                     end
                             end.
 
-init_redis(#mcc_state{redis = undefined} = State) ->
-    case ?MCC_REDIS of
-        false ->
-            State;
-        true ->
-            {Host, Port} = {?MCC_REDIS_SERVER, ?MCC_REDIS_PORT},
-            {ok, Redis} = eredis:start_link(Host, Port),
-            {ok, RedisSub} = eredis_sub:start_link(Host, Port, ""),
-            ok = eredis_sub:controlling_process(RedisSub),
-            ok = eredis_sub:subscribe(RedisSub, [<<"mcc">>]),
-            State#mcc_state{redis = Redis, redis_sub = RedisSub}
-    end.
-
 timer(#mcc_state{tref = undefined, overlay_every = FE} = State) when is_integer(FE) ->
     case timer:send_after(self(), tick, FE * 1000) of
         {ok, TRef} ->
@@ -133,12 +125,6 @@ timer(#mcc_state{tref = TRef} = State) ->
             timer(State#mcc_state{tref = undefined})
     end.
 
-handle_info({subscribed, <<"mcc">>, PID}, #mcc_state{redis_sub = PID} = State) ->
-    eredis_sub:ack_message(PID),
-    {noreply, State};
-handle_info({message, <<"mcc">>, Config, PID}, #mcc_state{redis_sub = PID} = State) ->
-    eredis_sub:ack_message(PID),
-    {noreply, rehash(mcc_store:redis_parse(Config), State)};
 handle_info(rehash, State) ->
     {noreply, rehash(State)}.
 
@@ -151,9 +137,6 @@ handle_call({list, Name}, _From, State) ->
 handle_call(info, _From, State) ->
     {reply, p_info(State), State}.
 
-handle_cast(flush, #mcc_state{redis = Redis} = State) ->
-    mcc_store:redis_set(Redis, []),
-    {noreply, State};
 handle_cast(rehash, State) ->
     {noreply, p_tick(State)}.
 
@@ -164,43 +147,37 @@ code_change(_, State, _) ->
     {ok, State}.
 
 p_info(State) ->
-    State.
+    {ok, [
+          {overlay, State#mcc_state.overlay},
+          {yaml, State#mcc_state.yaml_overlay}
+         ]}.
 
 p_tick(State) ->
     timer(rehash(State)).
 
-rehash(#mcc_state{redis = R} = State) ->
-    rehash(mcc_store:redis_get(R), #mcc_state{redis = R} = State).
-rehash(RC0, #mcc_state{redis = Redis, config = C, os_env = OC, app_env = AC, overlay = F} = State) ->
-    C9 = lists:foldl(fun merge_fun/2, C, AC),
-    C0 = lists:foldl(fun merge_fun/2, C9, mcc_store:overlay_read(F)), % merge overlay
-    RC = lists:foldl(fun redis_clean_fun/2, RC0, C0),
-    if
-        RC /= RC0 ->
-            mcc_store:redis_set(Redis, RC);
-        true ->
-            ok
-    end,
-    C1 = lists:foldl(fun merge_fun/2, C0, RC), % merge redis
-    C2 = lists:foldl(fun merge_fun/2, C1, OC), % merge os env
-    ok = mcc_store:render(C2),
-    lists:foreach(notify_fun(C), C2),
-    State#mcc_state{config = C2}.
-
-redis_clean_namespace_fun(N) ->
-    fun
-        ({K, V}, Config) ->
-                                     case mcc_util:cfgget(N, K, Config, undefined) of
-                                         undefined ->
-                                             Config;
-                                         V ->
-                                             mcc_util:cfgdel(N, K, Config);
-                                         _O ->
-                                             Config
-                                     end
-                             end.
-redis_clean_fun({N, PL}, Config) ->
-    lists:foldl(redis_clean_namespace_fun(N), Config, PL).
+rehash(#mcc_state{config = C,
+                  os_env = OC,
+                  overlay = F,
+                  yaml_overlay = YF,
+                  override = OVC
+} = State) ->
+    S0 = rehash_appenv(State),
+    #mcc_state{app_env = AC} = S0,
+    MF = fun(Layer, Config) ->
+                 io:format("IN ~p~n", [Config]),
+                 C1 =lists:foldl(fun merge_fun/2, Config, Layer),
+                 io:format("OUT ~p~n", [C1]),
+                 C1
+         end,
+    C0 = lists:foldl(MF, C, [
+                          OC, AC,
+                          mcc_store:overlay_read(F),
+                          mcc_store:yaml_read(YF),
+                          OVC
+                         ]),
+    ok = mcc_store:render(C0),
+    lists:foreach(notify_fun(C), C0),
+    S0#mcc_state{config = C0}.
 
 merge_namespace_fun(Name) ->
     fun
@@ -240,18 +217,13 @@ get(Name, Key, Default) when is_atom(Name), is_atom(Key) ->
 set(Name, Key, Value) when is_atom(Name), is_atom(Key) ->
     ok = gen_server:call(?MODULE, {set, Name, Key, Value}).
 
-p_set(Name, Key, Value, #mcc_state{config = Config, redis = Redis} = State) ->
-    case mcc_util:cfgget(Name, Key, Config, undefined) of
-        Value ->
-            State;
-        _Other ->
-            if Redis /= undefined ->
-                    ok = mcc_store:redis_set(Redis,mcc_util:cfgset(Name, Key, Value, mcc_store:redis_get(Redis))),
-                    rehash(State);
-               true ->
-                    rehash(State#mcc_state{config = mcc_util:cfgset(Name, Key, Value, Config)})
-            end
-    end.
+p_set(Name, Key, Value, #mcc_state{override = Override} = State) ->
+    OC = if Value == undefined ->
+                 mcc_util:cfgdel(Name, Key, Override);
+            true ->
+                 mcc_util:cfgset(Name, Key, Value, Override)
+         end,
+    rehash(State#mcc_state{override = OC}).
 
 p_list(#mcc_state{config = C}) ->
     F = fun

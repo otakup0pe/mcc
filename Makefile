@@ -1,16 +1,14 @@
 all: clean
-	./rebar get-deps
-	./rebar update-deps
-	./rebar compile
+	rebar3 get-deps
 
 clean: clean_doc
-	./rebar clean
-	./rebar delete-deps
+	rebar3 clean
 
 test: clean
-	./rebar eunit skip_deps=true
+	rebar3 eunit skip_deps=true
 
 clean_doc:
 	rm -rf doc
+
 doc: clean_doc
-	./rebar doc
+	rebar3 doc

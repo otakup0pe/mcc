@@ -2,13 +2,29 @@
 -author('jonafree@gmail.com').
 
 -include("mcc_internal.hrl").
+-include_lib("yamerl/include/yamerl_errors.hrl").
 
 -export([render/1]).
--export([redis_get/1, redis_set/2, redis_parse/1, overlay_read/1]).
+-export([overlay_read/1, yaml_read/1]).
 -ifdef(TEST).
 -compile(export_all).
 -endif.  
--define(REDIS_VSN, 1).
+
+yaml_read(undefined) ->
+    [];
+yaml_read(File) when is_list(File) ->
+    case catch yamerl_constr:file(File) of
+        [L] when is_list(L) ->
+            F = fun({K, V}) when is_list(K) ->
+                         {list_to_atom(K), V}
+                 end,
+            UF = fun({K, V}) when is_list(K), is_list(V) ->
+                         {list_to_atom(K), lists:map(F, V)}
+                 end,
+            lists:map(UF, L);
+        #yamerl_exception{errors=[#yamerl_parsing_error{name = file_open_failure}]} ->
+            []
+    end.
 
 overlay_read(undefined) ->
     [];
@@ -21,38 +37,6 @@ overlay_read(File) ->
 	{error, {Line, erl_parse, M}} ->
 	    ?error("unable to read overlay line ~p : ~s", [Line, lists:flatten(M)]),
 	    []
-    end.
-
-redis_set(PID, Config) when is_pid(PID), is_list(Config) ->
-    Blob = term_to_binary({mcc, ?REDIS_VSN, Config}),
-    case eredis:q(PID, ["SET", "mcc", Blob]) of
-	{ok, <<"OK">>} ->
-	    case eredis:q(PID, ["PUBLISH", "mcc", Blob]) of
-		{ok, B} ->
-		    case list_to_integer(binary_to_list(B)) of
-			I when is_integer(I) ->
-			    ok
-		    end
-	    end
-    end.
-
-redis_get(undefined) ->
-    [];
-redis_get(PID) when is_pid(PID) ->
-    case eredis:q(PID, ["GET", "mcc"]) of
-	{ok, Bin} when is_binary(Bin) ->
-	    redis_parse(Bin);
-	{ok, undefined} ->
-	    []
-    end.
-
-redis_parse(Bin) when is_binary(Bin) ->
-    case binary_to_term(Bin) of
-	{mcc, ?REDIS_VSN, PL} when is_list(PL) ->
-	    case mcc_util:verify(PL) of
-		true ->
-		    PL
-	    end
     end.
 
 render(Terms) ->
