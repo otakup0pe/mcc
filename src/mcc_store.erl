@@ -30,13 +30,13 @@ overlay_read(undefined) ->
     [];
 overlay_read(File) ->
     case file:consult(File) of
-	{ok, Overlay} ->
-	    Overlay;
-	{error, enoent} ->
-	    [];
-	{error, {Line, erl_parse, M}} ->
-	    ?error("unable to read overlay line ~p : ~s", [Line, lists:flatten(M)]),
-	    []
+        {ok, Overlay} ->
+            Overlay;
+        {error, enoent} ->
+            [];
+        {error, {Line, erl_parse, M}} ->
+            ?error("unable to read overlay line ~p : ~s", [Line, lists:flatten(M)]),
+            []
     end.
 
 render(Terms) ->
