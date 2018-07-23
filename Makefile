@@ -11,4 +11,4 @@ clean_doc:
 	rm -rf doc
 
 doc: clean_doc
-	rebar3 doc
+	rebar3 edoc
