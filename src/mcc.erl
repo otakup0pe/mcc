@@ -50,7 +50,7 @@ init([]) ->
             yaml_overlay = p_overlay_file("MCC_YAML", ?MCC_YAML_FILE),
             overlay_every = ?MCC_OVERLAY_EVERY
            },
-    {ok, timer(rehash(rehash_osenv(S0)))}.
+    {ok, timer(rehash(S0))}.
 
 p_overlay_file(Env, File) ->
     case os:getenv(Env) of
@@ -96,21 +96,20 @@ rehash_osenv([N|T], Env, Config) ->
     rehash_osenv(T, Env, lists:foldl(rehash_osenv_fun(N), Config, Env)).
 
 rehash_osenv_fun(Namespace) ->
-    N = string:to_upper(atom_to_list(Namespace)),
     fun
         (Env, Config) ->
-                                    case string:tokens(Env, "=") of
-                                        [Entry, Value] ->
-                                            case string:tokens(Entry, "_") of
-                                                [N| Key] ->
-                                                    mcc_util:cfgset(Namespace, list_to_atom(string:to_lower(string:join(Key, "_"))), mcc_util:autoval(Value), Config);
-                                                _ ->
-                                                    Config
-                                            end;
-                                        _ ->
-                                            Config
-                                    end
-                            end.
+	    case string:tokens(Env, "=") of
+		[Entry, Value] ->
+		    case string:find(Entry, string:to_upper(atom_to_list(Namespace))) of
+			Entry ->
+			    mcc_util:cfgset(Namespace, list_to_atom(string:prefix(string:to_lower(Entry), atom_to_list(Namespace) ++ "_")), mcc_util:autoval(Value), Config);
+			_ ->
+			    Config
+		    end;
+		_ ->
+		    Config
+	    end
+    end.
 
 timer(#mcc_state{tref = undefined, overlay_every = FE} = State) when is_integer(FE) ->
     case timer:send_after(self(), tick, FE * 1000) of
@@ -155,54 +154,52 @@ p_info(State) ->
 p_tick(State) ->
     timer(rehash(State)).
 
-rehash(#mcc_state{config = C,
-                  os_env = OC,
-                  overlay = F,
+rehash(#mcc_state{overlay = F,
                   yaml_overlay = YF,
                   override = OVC
 } = State) ->
     S0 = rehash_appenv(State),
-    #mcc_state{app_env = AC} = S0,
+    S1 = rehash_osenv(S0),
+    #mcc_state{app_env = AC} = S1,
     MF = fun(Layer, Config) ->
-                 io:format("IN ~p~n", [Config]),
                  C1 =lists:foldl(fun merge_fun/2, Config, Layer),
-                 io:format("OUT ~p~n", [C1]),
                  C1
          end,
-    C0 = lists:foldl(MF, C, [
-                          OC, AC,
-                          mcc_store:overlay_read(F),
-                          mcc_store:yaml_read(YF),
-                          OVC
-                         ]),
+    C0 = lists:foldl(MF, S1#mcc_state.config, [
+					   S1#mcc_state.os_env, AC,
+					   mcc_store:overlay_read(F),
+					   mcc_store:yaml_read(YF),
+					   OVC
+					  ]),
     ok = mcc_store:render(C0),
-    lists:foreach(notify_fun(C), C0),
-    S0#mcc_state{config = C0}.
+    lists:foreach(notify_fun(S1#mcc_state.config), C0),
+    S1#mcc_state{config = C0}.
+
 
 merge_namespace_fun(Name) ->
     fun
         ({K, V}, Config) ->
-                                  mcc_util:cfgset(Name, K, V, Config)
-                          end.
+	    mcc_util:cfgset(Name, K, V, Config)
+    end.
 merge_fun({N, PL}, Config) ->
     lists:foldl(merge_namespace_fun(N), Config, PL).
 
 notify_namespace_fun(Name, OldConfig) ->
     fun
         ({K, V}) ->
-                                              case mcc_util:cfgget(Name, K, OldConfig, undefined) of
-                                                  V ->
-                                                      ok;
-                                                  Other ->
-                                                      mcc_event:notify(#mcc{name = Name, key = K, value = V, old_value = Other})
-                                              end
-                                      end.
+	    case mcc_util:cfgget(Name, K, OldConfig, undefined) of
+		V ->
+		    ok;
+		Other ->
+		    mcc_event:notify(#mcc{name = Name, key = K, value = V, old_value = Other})
+	    end
+    end.
 
 notify_fun(OldConfig) ->
     fun
         ({Name, PL}) ->
-                              lists:foreach(notify_namespace_fun(Name, OldConfig), PL)
-                      end.
+	    lists:foreach(notify_namespace_fun(Name, OldConfig), PL)
+    end.
 
 get(Name, Key, Default) when is_atom(Name), is_atom(Key) ->
     case catch mcc_terms:Name(Key) of
