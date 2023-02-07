@@ -160,17 +160,20 @@ rehash(#mcc_state{overlay = F,
 } = State) ->
     S0 = rehash_appenv(State),
     S1 = rehash_osenv(S0),
-    #mcc_state{app_env = AC} = S1,
+    #mcc_state{app_env = AC,
+	       os_env = OS,
+	       config = MC} = S1,
     MF = fun(Layer, Config) ->
                  C1 =lists:foldl(fun merge_fun/2, Config, Layer),
                  C1
          end,
-    C0 = lists:foldl(MF, S1#mcc_state.config, [
-					   S1#mcc_state.os_env, AC,
-					   mcc_store:overlay_read(F),
-					   mcc_store:yaml_read(YF),
-					   OVC
-					  ]),
+    C0 = lists:foldl(MF, MC, [
+			      AC,
+			      mcc_store:overlay_read(F),
+			      mcc_store:yaml_read(YF),
+			      OS,
+			      OVC
+			     ]),
     ok = mcc_store:render(C0),
     lists:foreach(notify_fun(S1#mcc_state.config), C0),
     S1#mcc_state{config = C0}.
