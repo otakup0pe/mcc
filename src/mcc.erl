@@ -1,3 +1,5 @@
+%% @author Jonathan Freedman
+%% @copyright (c) 2012-2026 Jonathan Freedman
 -module(mcc).
 -author('jonafree@gmail.com').
 -behaviour(gen_server).
@@ -205,13 +207,12 @@ notify_fun(OldConfig) ->
     end.
 
 get(Name, Key, Default) when is_atom(Name), is_atom(Key) ->
-    case catch mcc_terms:Name(Key) of
+    try mcc_terms:Name(Key) of
         {ok, Value} ->
-            Value;
-        {'EXIT', {function_clause, _}} ->
-            Default;
-        {'EXIT', {undef, _}} ->
-            Default
+            Value
+    catch
+        error:function_clause -> Default;
+        error:undef -> Default
     end.
 
 set(Name, Key, Value) when is_atom(Name), is_atom(Key) ->

@@ -1,3 +1,5 @@
+%% @author Jonathan Freedman
+%% @copyright (c) 2012-2026 Jonathan Freedman
 -module(mcc_app).
 -author('jonafree@gmail.com').
 -behaviour(application).
@@ -7,9 +9,10 @@
 -export([start/2, stop/1]).
 
 start(_Type, _Args) ->
-    Then = now(),
+    Then = erlang:monotonic_time(microsecond),
     {ok, PID} = mcc_sup:start_link(),
-    ?info("mcc started in ~pms", [timer:now_diff(now(), Then) / 1000]),
+    Elapsed = (erlang:monotonic_time(microsecond) - Then) / 1000,
+    ?info("mcc started in ~pms", [Elapsed]),
     {ok, PID}.
 
 stop(_State) ->

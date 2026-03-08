@@ -1,8 +1,7 @@
-
-![Maintenance](https://img.shields.io/maintenance/yes/2023.svg)
-
 Mea Culpa; Config
 =================
+
+Requires OTP 27 or later.
 
 Fabulously optimized configuration for an Erlang/OTP system.
 

@@ -1,6 +1,8 @@
+%% @author Jonathan Freedman
+%% @copyright (c) 2012-2026 Jonathan Freedman
 -module(mcc_sup).
 -author('jonafree@gmail.com').
--behviour(supervisor).
+-behaviour(supervisor).
 
 -include("mcc_internal.hrl").
 -export([start_link/0, init/1]).

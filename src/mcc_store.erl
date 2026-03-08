@@ -1,3 +1,5 @@
+%% @author Jonathan Freedman
+%% @copyright (c) 2012-2026 Jonathan Freedman
 -module(mcc_store).
 -author('jonafree@gmail.com').
 
@@ -8,12 +10,12 @@
 -export([overlay_read/1, yaml_read/1]).
 -ifdef(TEST).
 -compile(export_all).
--endif.  
+-endif.
 
 yaml_read(undefined) ->
     [];
 yaml_read(File) when is_list(File) ->
-    case catch yamerl_constr:file(File) of
+    try yamerl_constr:file(File) of
         [L] when is_list(L) ->
             F = fun({K, V}) when is_list(K) ->
                          {list_to_atom(K), V}
@@ -21,8 +23,9 @@ yaml_read(File) when is_list(File) ->
             UF = fun({K, V}) when is_list(K), is_list(V) ->
                          {list_to_atom(K), lists:map(F, V)}
                  end,
-            lists:map(UF, L);
-        #yamerl_exception{errors=[#yamerl_parsing_error{name = file_open_failure}]} ->
+            lists:map(UF, L)
+    catch
+        throw:#yamerl_exception{errors=[#yamerl_parsing_error{name = file_open_failure}]} ->
             []
     end.
 
@@ -90,7 +93,7 @@ render_list(Line, [H|T], Result) ->
     render_list(Line, T, {cons, Line, render_value(Line, H), Result}).
 
 %% extract from mod
-%% {_,_,Bin}=compile:file(Mod,[debug_info,export_all,binary]), {ok,{_,[{abstract_code,{_,R}}]}} = beam_lib:chunks(Bin, [abstract_code]), 
+%% {_,_,Bin}=compile:file(Mod,[debug_info,export_all,binary]), {ok,{_,[{abstract_code,{_,R}}]}} = beam_lib:chunks(Bin, [abstract_code]),
 %%                  io:format("~p~n",[R]).
 
 header(Mod, Terms) ->

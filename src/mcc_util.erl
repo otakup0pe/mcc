@@ -1,3 +1,5 @@
+%% @author Jonathan Freedman
+%% @copyright (c) 2012-2026 Jonathan Freedman
 -module(mcc_util).
 -author('jonafree@gmail.com').
 
@@ -36,7 +38,7 @@ cfgdel(Name, Key, Terms) when is_atom(Name), is_atom(Key) ->
 		      {value, {Key, _Value}} ->
 			  lists:keydelete(Key, 1, PL)
 		  end,
-	    if 
+	    if
 		length(NPL) == 0 ->
 		    lists:keydelete(Name, 1, Terms);
 	        true ->
@@ -45,21 +47,14 @@ cfgdel(Name, Key, Terms) when is_atom(Name), is_atom(Key) ->
     end.
 
 autoval(Value) when is_list(Value) ->
-    case catch list_to_integer(Value) of
-	I when is_integer(I) ->
-	    I;
-	{'EXIT', {badarg, _}} ->
-	    case catch list_to_float(Value) of
-		F when is_float(F) ->
-		    F;
-		{'EXIT', {badarg, _}} ->
-		    case catch list_to_existing_atom(Value) of
-			A when is_atom(A) ->
-			    A;
-			{'EXIT', {badarg, _}} ->
-			    Value
-		    end
-	    end
+    try list_to_integer(Value)
+    catch error:badarg ->
+        try list_to_float(Value)
+        catch error:badarg ->
+            try list_to_existing_atom(Value)
+            catch error:badarg -> Value
+            end
+        end
     end.
 
 app_env(Name, Key, Default) ->
@@ -75,16 +70,11 @@ os_env(Name, Key, Default) ->
 	undefined ->
 	    Default;
 	{ok, Value} when is_list(Value) ->
-	    case catch list_to_existing_atom(Value) of
-		A when is_atom(A) ->
-		    A;
-		{'EXIT',{badarg,_}} -> 
-		    case catch list_to_integer(Value) of
-			I when is_integer(I) ->
-			    I;
-			{'EXIT', {badarg, _}} ->
-			    Value
-		    end
+	    try list_to_existing_atom(Value)
+	    catch error:badarg ->
+	        try list_to_integer(Value)
+	        catch error:badarg -> Value
+	        end
 	    end
     end.
 

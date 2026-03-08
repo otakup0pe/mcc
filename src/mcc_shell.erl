@@ -1,3 +1,5 @@
+%% @author Jonathan Freedman
+%% @copyright (c) 2012-2026 Jonathan Freedman
 -module(mcc_shell).
 -author('jonafree@gmail.com').
 -behaviour(shellbeam).
