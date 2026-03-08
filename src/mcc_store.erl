@@ -75,7 +75,12 @@ render_value(Line, Value) when is_tuple(Value) ->
 render_value(Line, Value) when is_binary(Value) ->
     {bin, Line, lists:map(fun(E) ->
 				  {bin_element, Line, render_value(Line, E), default, default}
-			  end, binary_to_list(Value))}.
+			  end, binary_to_list(Value))};
+render_value(Line, Value) when is_map(Value) ->
+    Pairs = maps:to_list(Value),
+    {map, Line, lists:map(fun({K, V}) ->
+        {map_field_assoc, Line, render_value(Line, K), render_value(Line, V)}
+    end, Pairs)}.
 
 render_list(Line, [H|T]) ->
     render_list(Line, T, {cons, Line, render_value(Line, H), {nil, Line}}).
