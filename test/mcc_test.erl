@@ -81,7 +81,7 @@ rehash_osenv_fun_no_equals_test() ->
 
 rehash_osenv_fun_accumulates_test() ->
     F = mcc:rehash_osenv_fun(myapp),
-    R1 = F("MYAPP_HOST=localhost", []),
+    R1 = F("MYAPP_HOST=app1.example.com", []),
     R2 = F("MYAPP_PORT=3000", R1),
-    ?assertEqual("localhost", mcc_util:cfgget(myapp, host, R2, undefined)),
+    ?assertEqual("app1.example.com", mcc_util:cfgget(myapp, host, R2, undefined)),
     ?assertEqual(3000, mcc_util:cfgget(myapp, port, R2, undefined)).
