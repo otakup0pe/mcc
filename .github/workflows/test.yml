@@ -9,17 +9,109 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        otp: ['27']
+    container:
+      image: erlang:${{ matrix.otp }}-slim
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Erlang
-        uses: erlef/setup-beam@v1
-        with:
-          otp-version: '27'
-          rebar3-version: '3.24'
+      - name: Install build deps
+        run: apt-get update && apt-get install -y make git curl
 
-      - name: Compile
-        run: rebar3 compile
+      - name: Install rebar3
+        run: |
+          curl -fsSL https://github.com/erlang/rebar3/releases/latest/download/rebar3 -o /usr/local/bin/rebar3
+          chmod +x /usr/local/bin/rebar3
 
       - name: Run tests
-        run: rebar3 eunit
+        run: make test-local
+
+  maybe_bump:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/mainline'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check for version bump hint
+        id: bump_check
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${LAST_TAG}..HEAD"
+          fi
+          MESSAGES=$(git log --format=%B "$RANGE")
+          if echo "$MESSAGES" | grep -qiE '#major|bump:major'; then
+            echo "part=major" >> "$GITHUB_OUTPUT"
+          elif echo "$MESSAGES" | grep -qiE '#minor|bump:minor'; then
+            echo "part=minor" >> "$GITHUB_OUTPUT"
+          elif echo "$MESSAGES" | grep -qiE '#patch|bump:patch'; then
+            echo "part=patch" >> "$GITHUB_OUTPUT"
+          else
+            echo "part=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version
+        id: next_version
+        if: steps.bump_check.outputs.part != ''
+        run: |
+          pip install avakas
+          CURRENT=$(avakas show . --flavor git-native)
+          PART=${{ steps.bump_check.outputs.part }}
+          IFS='.' read -r MAJ MIN PAT <<< "$CURRENT"
+          case "$PART" in
+            major) MAJ=$((MAJ+1)); MIN=0; PAT=0 ;;
+            minor) MIN=$((MIN+1)); PAT=0 ;;
+            patch) PAT=$((PAT+1)) ;;
+          esac
+          NEXT="${MAJ}.${MIN}.${PAT}"
+          echo "current=${CURRENT}" >> "$GITHUB_OUTPUT"
+          echo "next=${NEXT}" >> "$GITHUB_OUTPUT"
+
+      - name: Update version records
+        if: steps.bump_check.outputs.part != ''
+        env:
+          CURRENT: ${{ steps.next_version.outputs.current }}
+          NEXT: ${{ steps.next_version.outputs.next }}
+        run: |
+          sed -i "s/{vsn, \"${CURRENT}\"}/{vsn, \"${NEXT}\"}/" src/mcc.app.src
+          sed -i "s|{tag, \"${CURRENT}\"}|{tag, \"${NEXT}\"}|" README.md
+          if git diff --quiet src/mcc.app.src README.md; then
+            echo "expected version record changes for ${CURRENT} -> ${NEXT}, found none" >&2
+            exit 1
+          fi
+          git add src/mcc.app.src README.md
+          git commit -m "Version bumped to ${NEXT}"
+
+      - name: Push version commit
+        if: steps.bump_check.outputs.part != ''
+        run: git push origin HEAD:mainline
+
+      - name: Bump version
+        if: steps.bump_check.outputs.part != ''
+        run: avakas bump . ${{ steps.bump_check.outputs.part }} --flavor git-native
+
+      - name: Create GitHub release
+        if: steps.bump_check.outputs.part != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT: ${{ steps.next_version.outputs.next }}
+        run: |
+          gh release create "${NEXT}" \
+            --title "${NEXT}" \
+            --notes "Release ${NEXT}. See CHANGELOG.md for details." \
+            --verify-tag

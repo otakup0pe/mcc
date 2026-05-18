@@ -39,7 +39,7 @@ terminate(_R, #mcc_event_state{mod = Mod, state = CBState}) ->
     ok.
 
 handle_call(_, State) ->
-    {ok, State}.
+    {ok, ok, State}.
 
 handle_info(_, State) ->
     {ok, State}.

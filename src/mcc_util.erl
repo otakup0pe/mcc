@@ -66,10 +66,10 @@ app_env(Name, Key, Default) ->
     end.
 
 os_env(Name, Key, Default) ->
-    case os:get_env(string:to_upper(atom_to_list(Name) ++ "_" ++ atom_to_list(Key))) of
-	undefined ->
+    case os:getenv(string:to_upper(atom_to_list(Name) ++ "_" ++ atom_to_list(Key))) of
+	false ->
 	    Default;
-	{ok, Value} when is_list(Value) ->
+	Value when is_list(Value) ->
 	    try list_to_existing_atom(Value)
 	    catch error:badarg ->
 	        try list_to_integer(Value)

@@ -1,9 +1,10 @@
 ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-.PHONY: all compile test local-test local-eunit clean clean_doc doc docker-build docker-test
+.PHONY: all compile test test-local local-compile local-eunit local-ct local-dialyzer \
+        dialyzer shell clean distclean docker-build docker-test
 
 REBAR3 ?= rebar3
-DOCKER_IMAGE ?= mcc-test:latest
+COMPOSE ?= docker compose -f docker-compose.test.yml
 
 all: compile
 
@@ -13,21 +14,35 @@ compile:
 test: docker-test
 
 docker-build:
-	docker build -t $(DOCKER_IMAGE) -f Dockerfile.test .
+	$(COMPOSE) build
 
 docker-test: docker-build
-	docker run -t --rm -v $(PWD):/app -w /app $(DOCKER_IMAGE) make local-test
+	$(COMPOSE) run --rm test
 
-local-test: local-eunit
+test-local: local-eunit local-dialyzer
+	$(REBAR3) cover
+
+local-compile:
+	$(REBAR3) compile
 
 local-eunit:
 	$(REBAR3) eunit
 
-clean: clean_doc
+local-ct:
+	$(REBAR3) ct
+
+local-dialyzer:
+	$(REBAR3) dialyzer
+
+dialyzer:
+	$(REBAR3) dialyzer
+
+shell:
+	$(REBAR3) shell
+
+clean:
 	$(REBAR3) clean
 
-clean_doc:
-	rm -rf doc
-
-doc: clean_doc
-	$(REBAR3) edoc
+distclean: clean
+	rm -rf _build
+	$(COMPOSE) down -v

@@ -114,7 +114,7 @@ rehash_osenv_fun(Namespace) ->
     end.
 
 timer(#mcc_state{tref = undefined, overlay_every = FE} = State) when is_integer(FE) ->
-    case timer:send_after(self(), tick, FE * 1000) of
+    case timer:send_after(FE * 1000, self(), tick) of
         {ok, TRef} ->
             State#mcc_state{tref = TRef}
     end;
@@ -122,7 +122,7 @@ timer(#mcc_state{tref = undefined, overlay_every = undefined} = State) ->
     State;
 timer(#mcc_state{tref = TRef} = State) ->
     case timer:cancel(TRef) of
-        ok ->
+        {ok, cancel} ->
             timer(State#mcc_state{tref = undefined})
     end.
 

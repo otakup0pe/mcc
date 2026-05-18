@@ -1,10 +1,6 @@
 FROM erlang:27-slim
 
-RUN apt-get update && apt-get install -y make git curl locales && rm -rf /var/lib/apt/lists/* \
-    && sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
-
-ENV LANG=en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
+RUN apt-get update && apt-get install -y make git curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -13,7 +9,7 @@ ARG REBAR3_VERSION=3.24.0
 RUN curl -fsSL https://github.com/erlang/rebar3/releases/download/${REBAR3_VERSION}/rebar3 \
     -o /usr/local/bin/rebar3 && chmod +x /usr/local/bin/rebar3
 
-COPY rebar.config ./
+COPY rebar.config rebar.lock* ./
 RUN rebar3 get-deps || true
 
 COPY . .

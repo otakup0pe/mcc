@@ -1,0 +1,16 @@
+---
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    working_dir: /app
+    volumes:
+      - .:/app
+      - build_cache:/app/_build
+      - rebar3_cache:/root/.cache/rebar3
+    command: ["make", "test-local"]
+
+volumes:
+  build_cache:
+  rebar3_cache:
