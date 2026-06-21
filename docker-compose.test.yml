@@ -14,3 +14,9 @@ services:
 volumes:
   build_cache:
   rebar3_cache:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.42.0.112/28
